@@ -32,7 +32,7 @@ if (isset($_POST['checkurl'])){
 }
 
 // Allowed ip for adding a website : Evolution to do : map to an account
-$allowed_ip = "78.201.68.2";
+$allowed_ip = "127.0.0.1";
 $client_ip = $_SERVER['REMOTE_ADDR'];
 //echo "<center>your ip = " . $client_ip . "</center></br/>";	
 
