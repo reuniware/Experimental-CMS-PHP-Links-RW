@@ -1,18 +1,19 @@
 <?php
-define("MYSQL_SERVER", "");
-define("MYSQL_USER", "");
-define("MYSQL_PASSWORD", "");
-define("MYSQL_DB", "");
+define("MYSQL_SERVER", "mysqlserverhostname");
+define("MYSQL_USER", "username");
+define("MYSQL_PASSWORD", "password");
+define("MYSQL_DB", "dbtocreate");
 define("MAIN_TABLE_NAME", "annuaire");
-define("LOG_IP", false);
+define("LOG_IP", true);
 define("DELETE_ALL_LOGGED_IP", false);
 define("CREATE_DB_IF_NOT_EXISTS", true);
 define("CREATE_TABLES_IF_NOT_EXIST", true);
-define("TITLE","RW-PHPLinks v1.0<br/>Annuaire de sites");
-define("SUBTITLE","Annuaire de sites");
+define("TITLE","RW-PHPLinks v1.0");
+define("TITLE2","Annuaire de sites");
+define("SUBTITLE","Page de liens");
 
-if (isset($_POST['checkurl'])){
-	$url = $_POST['checkurl'];
+if (isset($_POST['gettitle'])){
+	$url = $_POST['gettitle'];
 	
 	$homepage = file_get_contents($url);
 	$array = explode("<title>", $homepage);
@@ -31,14 +32,97 @@ if (isset($_POST['checkurl'])){
 	exit;
 }
 
-// Allowed ip for adding a website : Evolution to do : map to an account
-$allowed_ip = "127.0.0.1";
-$client_ip = $_SERVER['REMOTE_ADDR'];
-//echo "<center>your ip = " . $client_ip . "</center></br/>";	
-
-if ($client_ip == $allowed_ip){
-	$allowed = true;
+if (isset($_POST['getcode'])){
+	$url = $_POST['getcode'];
+	
+	$homepage = file_get_contents($url);
+	$homepage = str_replace("<", "[", $homepage);
+	$homepage = str_replace(">", "]<br/>", $homepage);
+		
+	echo $homepage;
+	exit;
 }
+
+// if no admin account in db, create admin account with defined password (after hashing it)
+if (isset($_POST['password']) && isset($_POST['confirmpassword']) ) {
+	$password = $_POST['password'];
+	$confirmpassword = $_POST['confirmpassword'];
+	
+	if (trim($password) == '' || trim($confirmpassword) == ''){
+		echo 'Password of Confirm password is empty';
+		exit;
+	}
+	
+	if ($password != $confirmpassword){
+		echo 'Cannot create admin account because password do not match';
+		exit;
+	}
+	if ($password == $confirmpassword){
+		$hashed = md5($password);
+		$db = new mysqli(MYSQL_SERVER, MYSQL_USER, MYSQL_PASSWORD, MYSQL_DB);
+		if ($db->connect_errno) {
+			$db->close();
+		    exit;
+		}
+		$r = mysqli_query($db, "select * from user where trim(lower(username))='admin'");
+		if ($r->num_rows != 0){
+			echo 'Admin account already exists.';
+			$db->close();
+			exit;
+		}
+
+		$r = mysqli_query($db, "insert into user (username, password) values ('admin','" . $hashed . "')");
+		echo 'Admin account created OK';
+		$db->close();
+	}
+}
+
+if (isset($_POST['login']) && isset($_POST['password'])){
+	$login = trim(strtolower($_POST['login']));
+	$password = $_POST['password'];
+	$hash = md5($password);
+
+	$db = new mysqli(MYSQL_SERVER, MYSQL_USER, MYSQL_PASSWORD, MYSQL_DB);
+	if ($db->connect_errno) {
+		$db->close();
+		exit;
+	}
+	$r = mysqli_query($db, "select * from user where trim(lower(username))='" . $login . "' and password='" . $hash . "'");
+	if ($r->num_rows > 0){
+		echo 'Logged OK.';
+		$allowed = true;
+		$db->close();
+	} else {
+		$allowed = false;
+	}
+}
+
+
+
+if ($allowed == true){
+	echo 'allowed is true ; adminfunction';
+	if (isset($_POST['adminfunction'])){
+		$adminfunction = $_POST['adminfunction'];
+		echo 'adminfunction = ' . $adminfunction;
+		$array = explode("?delete_url&id=", $adminfunction);
+		if (!is_null($array) && count($array)>0){
+			$id = $array[1];
+
+			$db = new mysqli(MYSQL_SERVER, MYSQL_USER, MYSQL_PASSWORD, MYSQL_DB);
+			if ($db->connect_errno) {
+				echo 'error';
+			    exit;
+			}
+			
+			$str = "delete from " . MAIN_TABLE_NAME . " where id = " . $id;
+			echo 'request=[' . $str . ']';
+
+			$r = mysqli_query($db, "delete from " . MAIN_TABLE_NAME . " where id = " . $id);
+			$db->close();
+		}
+	}
+}
+
 
 // supprimer toutes les données de la table annuaire si paramètre get delete_data = true
 $delete_data = false;
@@ -103,6 +187,9 @@ if (CREATE_TABLES_IF_NOT_EXIST == true){
 	$sql = "CREATE TABLE `ip_address_log` (`id` bigint(20) NOT NULL AUTO_INCREMENT, `access_date_time` datetime NOT NULL, `ip_address` varchar(32) COLLATE latin1_general_ci NOT NULL, `url` varchar(255) COLLATE latin1_general_ci DEFAULT NULL, PRIMARY KEY (`id`)) ENGINE=MyISAM  DEFAULT CHARSET=latin1 COLLATE=latin1_general_ci";
 	$r = mysqli_query($db, $sql);
 
+        $sql = "CREATE TABLE `user` (`id` BIGINT NOT NULL AUTO_INCREMENT , `username` VARCHAR( 64 ) NOT NULL , `password` VARCHAR( 256 ) NOT NULL , PRIMARY KEY ( `id` )) ENGINE = MYISAM";
+	$r = mysqli_query($db, $sql);
+
 	$db->close();
 }
 
@@ -135,6 +222,7 @@ if ( isset($_GET['delete_url']) && isset($_GET['id']) ){
 	}
 	   
 	$r = mysqli_query($db, "delete from " . MAIN_TABLE_NAME . " where id = " . $id);
+	$db->close();
 }
 
 // AJOUT SITE
@@ -164,7 +252,7 @@ if (isset($_POST['url']) && isset($_POST['titre']) && isset($_POST['description'
 	   $_POST['url'] = "";
 	   $_POST['titre'] = "";
 	   $_POST['description'] = "";
-   
+
    }
 }
 
@@ -208,7 +296,7 @@ function getCurrentFileName()
 <div class="container">
   <div class="jumbotron">
   	<center>
-    <h1><?php echo TITLE; ?></h1>
+    <h3><?php echo TITLE; ?><br/><?php echo TITLE2; ?></h3>
     <p><?php echo SUBTITLE; ?></p> 
     </center>
   </div>
@@ -217,6 +305,7 @@ function getCurrentFileName()
 
 $db = new mysqli(MYSQL_SERVER, MYSQL_USER, MYSQL_PASSWORD, MYSQL_DB);
 if ($db->connect_errno) {
+	$db->close();
     exit;
 }
 
@@ -257,39 +346,147 @@ $db->close();
 
 if ($allowed == true){
 	
-echo '<center><b>Ajoutez votre site :</b><br/><br/>';
-echo "<form action='" . $_POST['current_file_name'] . "' method='post'>";
-echo ' URL du site: <input type="text" id="url" name="url" value="" size=64><br/>';
-echo ' Titre du site: <input type="text" id="titre" name="titre" value="" size=64>';
-echo ' <button id="btn001" onclick="">Get title</button>';
-echo '<br/>';
-echo '  Description du site: <input type="text" name="description" value="" size=64><br><br>';
-echo '  <input type="submit" value="Submit">';
-echo '</form></center>'; 
+	echo '<center><b>Ajoutez votre site :</b><br/><br/>';
+	echo "<form action='" . $_POST['current_file_name'] . "' method='post'>";
+	echo ' URL du site: <input type="text" id="url" name="url" value="" size=64><br/>';
+	echo ' Titre du site: <input type="text" id="titre" name="titre" value="" size=64>';
+	echo ' <input type="hidden" type="text" name="login" value="' . $_POST['login'] . '">';
+	echo ' <input type="hidden" type="text" name="password" value="' . $_POST['password'] . '">';
+	echo ' <button id="btngettitle" onclick="">Get title</button>';
+	echo ' <button id="btngetcode" onclick="">Get code</button>';
+	echo '<br/>';
+	echo '  Description du site: <input type="text" name="description" value="" size=64><br><br>';
+	echo '  <input id="btnsubmiturl" type="submit" value="Submit">';
+	echo '</form></center>'; 
+	echo '<br/><br/>';
+
+}
+
+if ($allowed == false){
+
+	echo '<center><b>Authentication :</b><br/><br/>';
+	echo "<form action='" . $_POST['current_file_name'] . "' method='post'>";
+	echo ' Login: <input type="text" id="login" name="login" value="" size=16><br/>';
+	echo ' Password: <input type="text" id="password" name="password" value="" size=16>';
+	echo ' <input type="submit" value="Connect">';
+	echo '</form></center>'; 
+	echo '<br/><br/>';
+	
+}
+
+$db = new mysqli(MYSQL_SERVER, MYSQL_USER, MYSQL_PASSWORD, MYSQL_DB);
+if ($db->connect_errno) {
+	$db->close();
+    exit;
+}
+$r = mysqli_query($db, "select * from user where trim(lower(username))='admin'");
+if ($r->num_rows == 0) {
+	//echo 'r num_rows = ' . $r->num_rows;
+	echo '<center><b>First connection - Create admin account</b><br/><br/>';
+	echo "<form action='" . $_POST['current_file_name'] . "' method='post'>";
+	echo ' Set Admin Password: <input type="text" id="password" name="password" value="" size=16>';
+	echo ' Confirm Admin Password: <input type="text" id="confirmpassword" name="confirmpassword" value="" size=16>';
+	echo ' <input type="submit" value="Connect">';
+	echo '</form></center>'; 
+	echo '<br/><br/>';
+}
+
+$db->close();
+
+
+?>
+
+
+<div id="footer" style="background-color:#acacac;height:125px;width:100%;overflow:auto"></div>
+
+<br/>
+
+<?php
+if ($allowed == true){
+?>
+
+<h4>Admin output :</h4>
+<div title="Admin output" id="sourcecode" style="background-color:gray;height:800px;width:100%;overflow:auto"></div>
+
+<br/><br/><br/><br/><br/><br/>
+
+<?php
 }
 ?>
 
 <script>
 
 $( document ).ready(function() {
-	$( "#btn001" ).click(function( event ) {
+	$( "#btngettitle" ).click(function( event ) {
 		event.preventDefault();
-		mafonction();
+		gettitle();
 	});
+	$( "#btngetcode" ).click(function( event ) {
+		event.preventDefault();
+		getsourcecode();
+	});
+	
+		$( "a" ).click(function( event ) {
+	  event.preventDefault();
+
+		var href = $(this).attr('href');
+		console.log(href);
+		
+		var login="<?php echo $_POST["login"] ?>";
+		var password="<?php echo $_POST["password"] ?>";
+		
+		console.log(login);
+		console.log(password);
+		
+		$.post
+		( 	"",
+			{ adminfunction : href,
+			  login : login,
+			  password : password
+			},
+			function(data) 
+			{
+				console.log( data);
+				$("#url").val("");
+				$("#titre").val("");
+				$("#description" ).val("");
+				$("#btnsubmiturl" ).click();
+			}
+		);
+
+	});
+
 });
 
 
-function mafonction()
+function gettitle()
 {
 	url = $("#url").val();
 	console.log(url);
 	$.post
 	( 	"",
-		{ checkurl : url },
+		{ gettitle : url },
 		function(data) 
 		{
 			console.log( data);
 			$("#titre").val(data);
+		}
+	);
+}
+
+function getsourcecode()
+{
+	url = $("#url").val();
+	console.log(url);
+	$.post
+	( 	"",
+		{ getcode : url },
+		function(data) 
+		{
+			console.log( data);
+			//$("#sourcecode").text(data);
+			$("#sourcecode").html(data);
+
 		}
 	);
 }
