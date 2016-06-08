@@ -11,6 +11,6 @@ Au premier lancement, il est demandé de définir un mot de passe administrateur
 
 Puis vous pouvez ajouter et supprimer des liens (quand vous êtes connecté en Admin).
 
-Ce projet RW-PHPLinks permet de créer très rapidement une page contenant une liste de lien qui sont mis à disposition.
+Ce projet RW-PHPLinks permet de créer très rapidement une page contenant une liste de liens qui sont mis à disposition.
 
 
