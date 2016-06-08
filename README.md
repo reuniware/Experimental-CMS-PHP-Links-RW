@@ -13,4 +13,7 @@ Puis vous pouvez ajouter et supprimer des liens (quand vous êtes connecté en A
 
 Ce projet RW-PHPLinks permet de créer très rapidement une page contenant une liste de liens qui sont mis à disposition.
 
+Une démonstration est disponible sur l'adresse web suivante :
+
+http://ntic974.comlu.com
 
